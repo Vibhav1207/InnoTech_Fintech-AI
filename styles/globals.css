@@ -1,55 +1,64 @@
 @import "tailwindcss";
 
+:root {
+  --background-rgb: 15, 23, 42;
+  --accent-primary: #3b82f6; /* Blue 500 */
+  --accent-secondary: #0ea5e9; /* Sky 500 */
+  --accent-tertiary: #64748b; /* Slate 500 */
+  --success: #10b981;
+  --danger: #ef4444;
+  --card-bg: #1e293b;
+  --card-border: #334155;
+}
+
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #f4f4f4;
+  color: #f1f5f9;
+  background-color: rgb(var(--background-rgb));
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1 {
-  color: #333;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-
-button {
-  background-color: #0070f3;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
+::-webkit-scrollbar-track {
+  background: #0f172a; 
 }
 
-button:hover {
-  background-color: #0051a2;
+::-webkit-scrollbar-thumb {
+  background: #334155; 
+  border-radius: 4px;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; 
 }
 
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
+/* Professional Card Utilities - Cleaner look, less glass */
+.glass-panel {
+  background: #1e293b; /* Solid Slate 800 */
+  border: 1px solid var(--card-border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
-th {
-  background-color: #0070f3;
-  color: white;
+.glass-card {
+  background: #1e293b;
+  border: 1px solid var(--card-border);
+  transition: all 0.2s ease;
 }
 
-tr:nth-child(even) {
-  background-color: #f2f2f2;
+.glass-card:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-
+/* Animations - Subtle and professional */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -57,9 +66,15 @@ tr:nth-child(even) {
   animation: fadeIn 0.3s ease-out forwards;
 }
 
+/* Typography Overrides */
+h1, h2, h3, h4, h5, h6 {
+  color: #f8fafc;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
 
-.btn-reset {
-  background-color: transparent;
-  padding: 0;
-  border-radius: 0;
+.font-mono-numbers {
+  font-family: 'Roboto Mono', monospace; /* Ensure a monospace font is available or fallback */
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }

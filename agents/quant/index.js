@@ -115,8 +115,19 @@ export async function analyze(symbol) {
 
     // Decision
     let action = 'HOLD';
-    if (score >= 25) action = 'BUY';
-    else if (score <= -25) action = 'SELL';
+    let decisions = ['HOLD', 'HOLD'];
+
+    if (score >= 25) {
+        action = 'BUY';
+        decisions = ['BUY_MORE', 'HOLD'];
+    } else if (score <= -25) {
+        action = 'SELL';
+        decisions = ['EXIT', 'REDUCE'];
+    } else if (score > 10) {
+        decisions = ['HOLD', 'BUY_MORE'];
+    } else if (score < -10) {
+        decisions = ['HOLD', 'REDUCE'];
+    }
 
     const confidence = Math.min(Math.abs(score) / 50, 1.0); // Normalize to 0-1
 
@@ -126,6 +137,7 @@ export async function analyze(symbol) {
         agent: 'quant',
         symbol,
         action,
+        decisions,
         confidence,
         reason: reasons.length > 0 ? reasons.join('; ') : 'Neutral quantitative signals.',
         data: {

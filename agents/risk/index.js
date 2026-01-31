@@ -115,7 +115,19 @@ export async function analyze(symbol, portfolio) {
     log(`Total Risk Score: ${riskScore}`);
 
     let action = 'HOLD';
-    if (riskScore > 60) action = 'SELL';
+    let decisions = ['HOLD', 'HOLD'];
+    let exitRiskState = 'LOW';
+
+    if (riskScore > 60) {
+        action = 'SELL';
+        decisions = ['EXIT', 'REDUCE'];
+        exitRiskState = 'HIGH';
+    } else if (riskScore > 30) {
+        decisions = ['HOLD', 'REDUCE'];
+        exitRiskState = 'MEDIUM';
+    } else {
+        decisions = ['HOLD', 'BUY_MORE']; // Low risk allows buying
+    }
     
     // Normalize risk score to confidence (0-1)
     // High risk score = High confidence in SELL/AVOID
@@ -127,11 +139,13 @@ export async function analyze(symbol, portfolio) {
         agent: 'risk',
         symbol,
         action,
+        decisions,
         confidence,
         reason: warnings.length > 0 ? warnings.join('; ') : 'Risk profile acceptable.',
         data: {
             volatility: volatility20,
-            riskScore
+            riskScore,
+            exitRiskState
         },
         logs
     };

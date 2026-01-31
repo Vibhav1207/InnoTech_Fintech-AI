@@ -1,14 +1,23 @@
-import * as defaultTechnicalAgent from '../technical';
-import * as defaultSentimentAgent from '../sentiment';
-import * as defaultQuantAgent from '../quant';
-import * as defaultRiskAgent from '../risk';
 
-export async function makeDecision(symbol, portfolio, dependencies = {}) {
+// Mock Agent Factories
+const createMockAgent = (name, action, decisions, confidence, data = {}) => ({
+    analyze: async () => ({
+        agent: name,
+        action,
+        decisions,
+        confidence,
+        data,
+        logs: [`[MOCK ${name}] Returning ${action}`]
+    })
+});
+
+// MASTER AGENT LOGIC (Pasted from agents/master/index.js with minor mods for standalone)
+async function makeDecision(symbol, portfolio, dependencies = {}) {
   const {
-      technicalAgent = defaultTechnicalAgent,
-      sentimentAgent = defaultSentimentAgent,
-      quantAgent = defaultQuantAgent,
-      riskAgent = defaultRiskAgent
+      technicalAgent,
+      sentimentAgent,
+      quantAgent,
+      riskAgent
   } = dependencies;
 
   const masterLogs = [];
@@ -25,13 +34,11 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       log(`Delegating analysis to ${name} agent...`);
       const result = await agent.analyze(...args);
       if (!result) throw new Error('Empty result');
-      // log(`${name} agent returned action: ${result.action} (Confidence: ${result.confidence})`);
       return result;
     } catch (err) {
       const errorMsg = `Error in ${name} Agent for ${symbol}: ${err.message}`;
       console.error(errorMsg);
       masterLogs.push(`[MASTER ERROR] ${errorMsg}`);
-      // Return a safe fallback that won't break the logic but provides no candidates
       return {
         agent: name,
         action: 'HOLD',
@@ -61,7 +68,6 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
   log('--- JUDGE LOGIC START ---');
 
   // --- STEP 0: INPUT NORMALIZATION ---
-  // Expand outputs into flat list of candidates
   let candidates = [];
   
   const processAgent = (agentRes, agentName) => {
@@ -76,7 +82,7 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       });
   };
 
-  processAgent(risk, 'Liquidity Agent');     // Using 'risk' as Liquidity Agent per instructions
+  processAgent(risk, 'Liquidity Agent');
   processAgent(tech, 'Technical Agent');
   processAgent(quant, 'Momentum/Stats Agent');
   processAgent(sent, 'Sentiment Agent');
@@ -100,9 +106,9 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       'HOLD': 0,
       'REDUCE': -1,
       'EXIT': -2,
-      'REALLOCATE': 0, // Ignored at this stage
-      'BUY': 2,        // Alias
-      'SELL': -2       // Alias
+      'REALLOCATE': 0,
+      'BUY': 2,
+      'SELL': -2
   };
 
   log('Step 2: Mapped actions to intent strength.');
@@ -113,7 +119,6 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
   
   let vetoApplied = false;
 
-  // Check for 'SELL' (generic), 'EXIT' (specific), or 'REDUCE' with High Risk
   if (liquidityAction === 'SELL' || liquidityAction === 'EXIT' || (liquidityAction === 'REDUCE' && exitRiskState === 'HIGH')) {
       log(`Step 3: LIQUIDITY VETO TRIGGERED (Risk State: ${exitRiskState}, Action: ${liquidityAction})`);
       log('  -> Removing ALL BUY_MORE candidates.');
@@ -129,21 +134,15 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
   }
 
   // --- STEP 4: CANDIDATE SCORING ---
-  // Quality Multiplier Calculation
   const getQualityMultiplier = (c) => {
       let multiplier = 1.0;
       const m = c.agentMetrics;
 
       if (c.agentName === 'Technical Agent') {
-           // Strong trend regime logic inferred from logs/data if explicit field missing, 
-           // but we can try to use available data points.
-           // Assuming technical agent passes some raw data.
-           // Ideally we parse the reason or data. 
-           // For now, we use a default based on confidence if specific metrics are missing.
            multiplier = 1.0; 
       } else if (c.agentName === 'Momentum/Stats Agent') {
            if (m.momentum5d > 0.02 && m.momentum20d > 0.05) multiplier = 1.2;
-           if (m.zScore > 2 || m.zScore < -2) multiplier = 0.9; // Exhaustion/Overextended
+           if (m.zScore > 2 || m.zScore < -2) multiplier = 0.9;
       } else if (c.agentName === 'Liquidity Agent') {
            if (m.exitRiskState === 'LOW') multiplier = 1.2;
            if (m.exitRiskState === 'HIGH') multiplier = 0.8;
@@ -165,13 +164,12 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       return {
           ...c,
           score: score,
-          intentScore: intentScore, // Store original signed score for aggregation
+          intentScore: intentScore,
           quality: quality
       };
   });
 
   log('Step 4: Candidates Scored.');
-  // candidates.forEach(c => log(`  - ${c.agentName} [${c.action}]: Score=${c.score.toFixed(3)} (Q=${c.quality.toFixed(2)})`));
 
   // --- STEP 5: RANKING ---
   candidates.sort((a, b) => b.score - a.score);
@@ -195,33 +193,22 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
   top4.forEach((c, i) => log(`  #${i+1}: ${c.agentName} -> ${c.action} (Score: ${c.score.toFixed(3)})`));
 
   // --- STEP 7: INTENT AGGREGATION ---
-  // finalIntentScore = Σ (candidateScore × directionSign)
-  // Note: 'score' calculated in Step 4 was absolute value. 
-  // We need to re-apply sign from intentScore.
-  
   let finalIntentScore = 0;
   top4.forEach(c => {
       const sign = Math.sign(c.intentScore);
-      // If action is HOLD (score 0), sign is 0, contributes 0.
-      // If action is REALLOCATE (score 0), sign is 0.
-      
-      // The prompt says: candidateScore = ... * actionStrength
-      // finalIntentScore = Σ (candidateScore × directionSign)
-      // So if HOLD has actionStrength 0, candidateScore is 0.
-      
       finalIntentScore += (c.score * sign);
   });
 
   log(`Step 7: Aggregated Intent Score: ${finalIntentScore.toFixed(3)}`);
 
   // Interpretation
-  const T = 0.5; // Configurable threshold
+  const T = 0.5;
   let finalDecision = 'HOLD';
   
   if (finalIntentScore > T) {
       finalDecision = 'BUY_MORE';
   } else if (finalIntentScore < -T) {
-      finalDecision = 'SELL_PATH'; // Temporary placeholder for Step 8
+      finalDecision = 'SELL_PATH';
   } else {
       finalDecision = 'HOLD';
   }
@@ -238,49 +225,55 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
           log('Step 8: Moderate/Low Risk -> REDUCE');
       }
   } else {
-      log(`Step 8: No sell path resolution needed (Decision is ${finalDecision}).`);
+      log(`Step 8: No sell path resolution needed.`);
   }
 
   // --- STEP 9: REALLOCATE HANDLING ---
   let reallocate = false;
   if (finalDecision === 'REDUCE' || finalDecision === 'EXIT') {
-      // Check if another symbol has BUY_MORE recommendation (not available in single symbol context)
-      // For this agent scope, we just set the flag if the *intent* was REALLOCATE-like or if we are freeing up capital.
-      // The prompt says: "Emit REALLOCATE flag only if: Final action is REDUCE or EXIT AND Another symbol has BUY_MORE"
-      // Since we don't know about other symbols here, we will always set a "capitalAvailable" flag or similar.
-      // Or we strictly follow "REALLOCATE is NOT decided here."
-      // We will just return the flag as requested.
       reallocate = true; 
       log('Step 9: Capital freed up (REDUCE/EXIT) -> Reallocation candidate.');
   }
 
-  // --- FINAL OUTPUT CONSTRUCTION ---
-  
-  // Generate human-readable reasoning
-  const reasoningSummary = `Master Agent decided to ${finalDecision} based on a final intent score of ${finalIntentScore.toFixed(2)}. ` +
-                           `Top contributors were ${top4.map(c => c.agentName).join(', ')}. ` +
-                           (vetoApplied ? 'Liquidity Veto was active. ' : '') +
-                           (reallocate ? 'Capital made available for reallocation.' : '');
-
   log(`*** FINAL DECISION: ${finalDecision} ***`);
 
-  // Append Master logs to the collection
-  allLogs = [...allLogs, ...masterLogs];
-
   return {
-      symbol,
       finalAction: finalDecision,
       finalIntentScore,
       top4Candidates: top4,
-      vetoApplied,
-      reallocate,
-      scoringBreakdown: top4.map(c => ({
-          agent: c.agentName,
-          action: c.action,
-          score: c.score,
-          contribution: c.score * Math.sign(c.intentScore)
-      })),
-      reasoning: reasoningSummary,
-      logs: allLogs
+      vetoApplied
   };
 }
+
+// --- TEST RUNNER ---
+async function runTests() {
+    console.log('\n=== SCENARIO 1: BULLISH CONSENSUS ===');
+    const s1 = await makeDecision('TEST_BULL', {}, {
+        technicalAgent: createMockAgent('technical', 'BUY', ['BUY_MORE', 'HOLD'], 0.9),
+        sentimentAgent: createMockAgent('sentiment', 'BUY', ['BUY_MORE', 'HOLD'], 0.85, { mood: 'BULLISH', volumeIntensity: 'HIGH' }),
+        quantAgent: createMockAgent('quant', 'BUY', ['BUY_MORE', 'HOLD'], 0.8, { momentum5d: 0.05, momentum20d: 0.1, zScore: 1.0 }),
+        riskAgent: createMockAgent('risk', 'HOLD', ['HOLD', 'BUY_MORE'], 0.2, { exitRiskState: 'LOW' })
+    });
+    console.log(`RESULT: ${s1.finalAction} (Score: ${s1.finalIntentScore.toFixed(2)})`);
+
+    console.log('\n=== SCENARIO 2: LIQUIDITY VETO ===');
+    const s2 = await makeDecision('TEST_VETO', {}, {
+        technicalAgent: createMockAgent('technical', 'BUY', ['BUY_MORE', 'HOLD'], 0.9),
+        sentimentAgent: createMockAgent('sentiment', 'BUY', ['BUY_MORE', 'HOLD'], 0.9),
+        quantAgent: createMockAgent('quant', 'BUY', ['BUY_MORE', 'HOLD'], 0.9),
+        riskAgent: createMockAgent('risk', 'SELL', ['EXIT', 'REDUCE'], 0.95, { exitRiskState: 'HIGH' })
+    });
+    console.log(`RESULT: ${s2.finalAction} (Score: ${s2.finalIntentScore.toFixed(2)})`);
+    console.log(`VETO APPLIED: ${s2.vetoApplied}`);
+
+    console.log('\n=== SCENARIO 3: MIXED SIGNALS ===');
+    const s3 = await makeDecision('TEST_MIXED', {}, {
+        technicalAgent: createMockAgent('technical', 'BUY', ['BUY_MORE', 'HOLD'], 0.6),
+        sentimentAgent: createMockAgent('sentiment', 'HOLD', ['HOLD', 'HOLD'], 0.4),
+        quantAgent: createMockAgent('quant', 'SELL', ['EXIT', 'REDUCE'], 0.7, { zScore: -2.5 }),
+        riskAgent: createMockAgent('risk', 'HOLD', ['HOLD', 'REDUCE'], 0.4, { exitRiskState: 'MEDIUM' })
+    });
+    console.log(`RESULT: ${s3.finalAction} (Score: ${s3.finalIntentScore.toFixed(2)})`);
+}
+
+runTests();

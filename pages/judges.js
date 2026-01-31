@@ -186,9 +186,9 @@ export default function JudgesMode() {
             <div className="flex-1 p-4 overflow-y-auto font-mono text-sm space-y-1 custom-scrollbar">
               {displayedLogs.map((log, index) => {
                   let colorClass = "text-slate-300";
-                  if (log.includes("[MASTER]")) colorClass = "text-purple-400 font-bold";
-                  else if (log.includes("[TECHNICAL]")) colorClass = "text-blue-400";
-                  else if (log.includes("[SENTIMENT]")) colorClass = "text-pink-400";
+                  if (log.includes("[MASTER]")) colorClass = "text-blue-400 font-bold";
+                  else if (log.includes("[TECHNICAL]")) colorClass = "text-emerald-400";
+                  else if (log.includes("[SENTIMENT]")) colorClass = "text-sky-400";
                   else if (log.includes("[QUANT]")) colorClass = "text-yellow-400";
                   else if (log.includes("[RISK]")) colorClass = "text-orange-400";
                   else if (log.includes("ERROR")) colorClass = "text-red-500 font-bold";
