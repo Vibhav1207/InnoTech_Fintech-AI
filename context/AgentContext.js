@@ -119,6 +119,11 @@ export function AgentProvider({ children }) {
                         });
                     }
 
+                    if (res.data.status === 'STOPPED') {
+                        setIsLooping(false);
+                        fetchSession();
+                    }
+
                     if (res.data.status === 'RISK_STOP') {
                         setIsLooping(false);
                         fetchSession();
