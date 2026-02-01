@@ -1,11 +1,14 @@
 import '../styles/globals.css';
 import Layout from '../components/Layout';
+import { AgentProvider } from '../context/AgentContext';
 
 function MyApp({ Component, pageProps }) {
   return (
-    <Layout>
-      <Component {...pageProps} />
-    </Layout>
+    <AgentProvider>
+      <Layout>
+        <Component {...pageProps} />
+      </Layout>
+    </AgentProvider>
   );
 }
 

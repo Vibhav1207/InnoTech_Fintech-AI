@@ -6,16 +6,16 @@ const AgentDecisionSchema = new mongoose.Schema({
     required: true,
   },
   agentName: {
-    type: String, // 'technical', 'sentiment', 'quant', 'liquidity', 'risk', 'master'
+    type: String,
     required: true,
   },
   decision: {
     type: String,
-    enum: ['BUY', 'SELL', 'HOLD'],
+    enum: ['BUY', 'SELL', 'HOLD', 'BUY_MORE', 'REDUCE', 'EXIT', 'REALLOCATE'],
     required: true,
   },
   confidence: {
-    type: Number, // 0 to 1 or 0 to 100
+    type: Number,
     required: true,
   },
   reasoning: {
@@ -23,7 +23,7 @@ const AgentDecisionSchema = new mongoose.Schema({
     required: true,
   },
   marketSnapshot: {
-    type: Object, // Flexible field for capturing relevant market data at time of decision
+    type: Object,
     default: {},
   },
   createdAt: {

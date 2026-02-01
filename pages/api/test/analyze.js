@@ -1,7 +1,6 @@
 
 import * as masterAgent from '../../../agents/master';
 
-// Mock Portfolio for Risk Agent
 const mockPortfolio = {
     _id: 'mock-portfolio-id',
     positions: [],
@@ -13,7 +12,6 @@ export default async function handler(req, res) {
     console.log(`\nStarting Master Agent Analysis for ${symbol}...`);
 
     try {
-        // Run Master Agent (which delegates to sub-agents)
         const decision = await masterAgent.makeDecision(symbol, mockPortfolio);
 
         const output = {

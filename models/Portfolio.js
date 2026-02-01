@@ -16,8 +16,24 @@ const PortfolioSchema = new mongoose.Schema({
   },
   sectorExposure: {
     type: Map,
-    of: Number, // Percentage or value per sector
+    of: Number, 
     default: {},
+  },
+  realizedPnL: {
+    type: Number,
+    default: 0,
+  },
+  unrealizedPnL: {
+    type: Number,
+    default: 0,
+  },
+  dailyPnL: {
+    type: Number,
+    default: 0,
+  },
+  cumulativePnL: {
+    type: Number,
+    default: 0,
   },
   updatedAt: {
     type: Date,

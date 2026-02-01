@@ -1,27 +1,65 @@
-# Agentic Portfolio Management System (Demo)
+# InnoTech Fintech AI - Agentic Portfolio Manager
 
-A demo-only, agentic portfolio management system for hackathon use.
+A simulated autonomous trading agent system powered by a Master Decision Agent and specialized sub-agents. This project demonstrates a complete agentic workflow for portfolio management, from data analysis to trade execution, within a safe, simulated environment.
 
-## Monorepo structure
+## 🚀 Key Features
 
-| Service         | Stack                    | Port | Health / entry          |
-|----------------|--------------------------|------|--------------------------|
-| **backend**    | Node.js + TypeScript     | 3001 | `GET /health`            |
-| **agent_service** | Python + FastAPI      | 8000 | `GET /health`            |
-| **frontend**   | Next.js 14 (app router)  | 3000 | `/health` page           |
+- **Master Decision Agent (Judge):** A sophisticated 9-step decision engine that aggregates inputs from specialized sub-agents (Liquidity, Technical, Sentiment, Momentum) using domain weights, veto logic, and intent mapping.
+- **Autonomous Agent Loop:** Continuous operating cycle that analyzes wishlist stocks, makes decisions, and executes trades without human intervention.
+- **Real-time Portfolio Management:** Tracks cash, positions, realized/unrealized PnL, and enforces risk controls (e.g., max trades per day, capital limits).
+- **Professional Dashboard:** A fintech-grade dark-themed UI (Next.js) for monitoring agent status, live trade logs, and portfolio performance history.
+- **Simulation Engine:** Realistic execution simulation with slippage, partial fills (logic ready), and transaction cost modeling.
 
-Each service runs independently.
+## 🛠️ Architecture
 
-- **Backend:** `cd backend && npm install && npm run dev` → http://localhost:3001/health  
-- **Agent service:** `cd agent_service`, create venv, `pip install -r requirements.txt`, then `uvicorn main:app --reload --port 8000` → http://localhost:8000/health  
-- **Frontend:** `cd frontend && npm install && npm run dev` → http://localhost:3000 and http://localhost:3000/health  
+Built as a single-repo **Next.js** application, combining frontend UI and backend API routes.
 
---- It simulates managing open positions over time with modular agents (signals, risk, portfolio, decision, feedback), logs everything to a database, and exposes APIs for a read-only frontend dashboard. No real trades or broker integrations—paper trading only.
+- **Frontend:** React, Tailwind CSS, Recharts (Dark Theme / Glassmorphism-inspired).
+- **Backend:** Next.js API Routes (Node.js).
+- **Database:** MongoDB (Mongoose models for User, Portfolio, Positions, TradeLog, AgentSession).
+- **Agents:** Modular agent logic in `/agents/` (Master, Quant, Risk, etc.).
 
-**Problem:** Managing open positions over time in a simulated environment—tracking PnL, risk, and agent decisions—without real execution.
+## 📂 Project Structure
 
-**High-level flow:** Data (fetchers/models) → agents (signals, risk, portfolio, decision, feedback) → decisions → logs to DB → APIs → dashboard (positions, PnL, risk, logs).
+```
+/agents          # Agent Logic (Master, Technical, Sentiment, etc.)
+/context         # React Context for Global State (AgentContext)
+/lib             # Shared Utilities (Portfolio Manager, Execution Engine)
+/models          # MongoDB Schemas (Portfolio, TradeLog, AgentSession)
+/pages           # Next.js Pages (Dashboard, Trade) & API Routes
+/styles          # Global Styles & Tailwind Config
+```
 
----
+## ⚡ Getting Started
 
-**Disclaimer:** This system is for simulation and demonstration only. It does not place real trades, connect to real brokers, or handle real money. Use only in a hackathon or learning context.
+1. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Configure Environment:**
+   Ensure you have a `.env` or `.env.local` file with your MongoDB connection string:
+   ```
+   MONGODB_URI=your_mongodb_connection_string
+   ```
+
+3. **Run the Application:**
+   ```bash
+   npm run dev
+   ```
+   Access the app at `http://localhost:3000`.
+
+## 🤖 Agent Logic Flow
+
+1. **Initialization:** User configures wishlist and risk limits.
+2. **Analysis:** Sub-agents analyze each symbol and output decisions (BUY/SELL/HOLD) with confidence scores.
+3. **Master Judgment:** The Master Agent aggregates decisions:
+   - Applies **Liquidity Veto** (hard constraint).
+   - Weights inputs (Liquidity > Technical > Momentum > Sentiment).
+   - Calculates a final **Action Score**.
+4. **Execution:** Validates against portfolio constraints (Capital, Max Trades) and executes the simulated trade.
+5. **Loop:** Repeats after a cooldown period.
+
+## ⚠️ Disclaimer
+
+This is a **simulation only**. No real money is involved, and no real trades are executed on any exchange.

@@ -19,12 +19,12 @@ const PositionSchema = new mongoose.Schema({
     required: true,
   },
   currentPrice: {
-    type: Number, // Will need to be updated periodically or on fetch
+    type: Number,
     default: 0,
   },
   sector: {
     type: String,
-    default: 'Technology', // Default or fetch from API
+    default: 'Technology',
   },
   openedAt: {
     type: Date,

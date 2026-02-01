@@ -1,6 +1,7 @@
 import Portfolio from '../models/Portfolio';
 import Position from '../models/Position';
 import TradeLog from '../models/TradeLog';
+import ExecutionLog from '../models/ExecutionLog';
 import { getQuote } from './alphaVantageService';
 
 const ALLOCATION_PER_TRADE = 0.10; 
@@ -10,19 +11,41 @@ const REDUCE_PCT = 0.50;
 export async function executeDecision(portfolioId, symbol, decision, confidence, agentId = 'master', manualOverride = {}) {
     console.log(`\n--- Execution Engine: Processing ${decision} for ${symbol} ---`);
 
+    const logExecution = async (status, message, quantity = 0, price = 0, metadata = {}) => {
+        try {
+            await ExecutionLog.create({
+                symbol,
+                action: decision,
+                quantity,
+                price,
+                status,
+                message,
+                source: agentId,
+                portfolioId,
+                metadata: { ...manualOverride, confidence, ...metadata }
+            });
+        } catch (err) {
+            console.error('Failed to log execution:', err);
+        }
+    };
+
     if (decision === 'HOLD') {
         console.log('Decision is HOLD. No execution required.');
+        await logExecution('SKIPPED', 'Decision is HOLD');
         return { success: true, action: 'HOLD', message: 'No action taken' };
     }
 
     const portfolio = await Portfolio.findById(portfolioId);
     if (!portfolio) {
+        await logExecution('FAILED', 'Portfolio not found');
         throw new Error('Portfolio not found');
     }
 
     const quote = await getQuote(symbol);
     if (!quote || quote.error) {
-        throw new Error('Failed to fetch market data: ' + (quote?.error || 'Unknown error'));
+        const err = quote?.error || 'Unknown error';
+        await logExecution('FAILED', 'Market data failed: ' + err);
+        throw new Error('Failed to fetch market data: ' + err);
     }
     const price = quote.price;
 
@@ -44,6 +67,7 @@ export async function executeDecision(portfolioId, symbol, decision, confidence,
             totalCost = quantityToTrade * price;
         } else if (manualOverride.amount) {
             if (manualOverride.amount > cash) {
+                 await logExecution('FAILED', 'Insufficient funds for requested amount', 0, price);
                  return { success: false, message: 'Insufficient funds for requested amount' };
             }
             quantityToTrade = Math.floor(manualOverride.amount / price);
@@ -60,11 +84,13 @@ export async function executeDecision(portfolioId, symbol, decision, confidence,
         }
 
         if (quantityToTrade <= 0) {
+            await logExecution('FAILED', 'Quantity to buy is 0', 0, price);
             return { success: false, message: 'Quantity to buy is 0 (insufficient funds or low amount)' };
         }
 
         if (totalCost > cash) {
             console.log('Insufficient cash.');
+            await logExecution('FAILED', 'Insufficient funds', quantityToTrade, price);
             return { success: false, message: 'Insufficient funds' };
         }
 
@@ -93,6 +119,7 @@ export async function executeDecision(portfolioId, symbol, decision, confidence,
         
         if (!position || currentQty === 0) {
             console.log('No position to sell.');
+            await logExecution('FAILED', 'No position to sell', 0, price);
             return { success: false, message: 'No position to sell' };
         }
 
@@ -139,6 +166,8 @@ export async function executeDecision(portfolioId, symbol, decision, confidence,
         
         console.log(`Executed ${actionToLog} ${quantityToTrade} shares of ${symbol} at $${price}`);
     }
+
+    await logExecution('SUCCESS', 'Executed', quantityToTrade, price, { pnl });
 
     return {
         success: true,

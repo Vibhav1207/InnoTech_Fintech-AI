@@ -19,19 +19,17 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log(`--- Master Agent (Judge) Initiated for ${symbol} ---`);
 
-  // Helper to safely run an agent
   const runAgent = async (agent, name, ...args) => {
     try {
+
       log(`Delegating analysis to ${name} agent...`);
       const result = await agent.analyze(...args);
       if (!result) throw new Error('Empty result');
-      // log(`${name} agent returned action: ${result.action} (Confidence: ${result.confidence})`);
       return result;
     } catch (err) {
       const errorMsg = `Error in ${name} Agent for ${symbol}: ${err.message}`;
       console.error(errorMsg);
       masterLogs.push(`[MASTER ERROR] ${errorMsg}`);
-      // Return a safe fallback that won't break the logic but provides no candidates
       return {
         agent: name,
         action: 'HOLD',
@@ -44,13 +42,15 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
     }
   };
 
-  // 1. Collect inputs from all 4 agents
   const tech = await runAgent(technicalAgent, 'technical', symbol);
+
   const sent = await runAgent(sentimentAgent, 'sentiment', symbol);
   const quant = await runAgent(quantAgent, 'quant', symbol);
   const risk = await runAgent(riskAgent, 'risk', symbol, portfolio);
 
-  // Collect sub-agent logs
+  const marketPrice = (tech && tech.data && tech.data.price) ? tech.data.price : 0;
+
+
   let allLogs = [...masterLogs];
   [tech, sent, quant, risk].forEach(agentResult => {
       if (agentResult && agentResult.logs) {
@@ -60,9 +60,8 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log('--- JUDGE LOGIC START ---');
 
-  // --- STEP 0: INPUT NORMALIZATION ---
-  // Expand outputs into flat list of candidates
   let candidates = [];
+
   
   const processAgent = (agentRes, agentName) => {
       if (!agentRes || !agentRes.decisions) return;
@@ -76,7 +75,7 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       });
   };
 
-  processAgent(risk, 'Liquidity Agent');     // Using 'risk' as Liquidity Agent per instructions
+  processAgent(risk, 'Liquidity Agent');
   processAgent(tech, 'Technical Agent');
   processAgent(quant, 'Momentum/Stats Agent');
   processAgent(sent, 'Sentiment Agent');
@@ -84,7 +83,6 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
   log(`Step 0: Expanded candidates. Total: ${candidates.length}`);
   candidates.forEach(c => log(`  - ${c.agentName}: ${c.action} (Conf: ${c.agentConfidence.toFixed(2)})`));
 
-  // --- STEP 1: DOMAIN PRIORITY WEIGHTS ---
   const AGENT_WEIGHTS = {
       'Liquidity Agent': 1.00,
       'Technical Agent': 0.85,
@@ -94,26 +92,25 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
   
   log('Step 1: Applied Domain Priority Weights.');
 
-  // --- STEP 2: ACTION -> INTENT MAPPING ---
   const ACTION_SCORES = {
       'BUY_MORE': 2,
+
       'HOLD': 0,
       'REDUCE': -1,
       'EXIT': -2,
-      'REALLOCATE': 0, // Ignored at this stage
-      'BUY': 2,        // Alias
-      'SELL': -2       // Alias
+      'REALLOCATE': 0,
+      'BUY': 2,
+      'SELL': -2
   };
+
 
   log('Step 2: Mapped actions to intent strength.');
 
-  // --- STEP 3: LIQUIDITY VETO (HARD CONSTRAINT) ---
   const exitRiskState = risk.data && risk.data.exitRiskState ? risk.data.exitRiskState : 'LOW';
   const liquidityAction = risk.action;
   
   let vetoApplied = false;
 
-  // Check for 'SELL' (generic), 'EXIT' (specific), or 'REDUCE' with High Risk
   if (liquidityAction === 'SELL' || liquidityAction === 'EXIT' || (liquidityAction === 'REDUCE' && exitRiskState === 'HIGH')) {
       log(`Step 3: LIQUIDITY VETO TRIGGERED (Risk State: ${exitRiskState}, Action: ${liquidityAction})`);
       log('  -> Removing ALL BUY_MORE candidates.');
@@ -128,22 +125,15 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       log('Step 3: No Liquidity Veto applied.');
   }
 
-  // --- STEP 4: CANDIDATE SCORING ---
-  // Quality Multiplier Calculation
   const getQualityMultiplier = (c) => {
       let multiplier = 1.0;
       const m = c.agentMetrics;
 
       if (c.agentName === 'Technical Agent') {
-           // Strong trend regime logic inferred from logs/data if explicit field missing, 
-           // but we can try to use available data points.
-           // Assuming technical agent passes some raw data.
-           // Ideally we parse the reason or data. 
-           // For now, we use a default based on confidence if specific metrics are missing.
            multiplier = 1.0; 
       } else if (c.agentName === 'Momentum/Stats Agent') {
            if (m.momentum5d > 0.02 && m.momentum20d > 0.05) multiplier = 1.2;
-           if (m.zScore > 2 || m.zScore < -2) multiplier = 0.9; // Exhaustion/Overextended
+           if (m.zScore > 2 || m.zScore < -2) multiplier = 0.9;
       } else if (c.agentName === 'Liquidity Agent') {
            if (m.exitRiskState === 'LOW') multiplier = 1.2;
            if (m.exitRiskState === 'HIGH') multiplier = 0.8;
@@ -165,19 +155,16 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       return {
           ...c,
           score: score,
-          intentScore: intentScore, // Store original signed score for aggregation
+          intentScore: intentScore,
           quality: quality
       };
   });
 
   log('Step 4: Candidates Scored.');
-  // candidates.forEach(c => log(`  - ${c.agentName} [${c.action}]: Score=${c.score.toFixed(3)} (Q=${c.quality.toFixed(2)})`));
 
-  // --- STEP 5: RANKING ---
   candidates.sort((a, b) => b.score - a.score);
   log('Step 5: Candidates Ranked by Score (Descending).');
 
-  // --- STEP 6: DIVERSITY CONSTRAINT ---
   const top4 = [];
   const agentCounts = {};
   
@@ -194,41 +181,28 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
   log('Step 6: Selected TOP 4 with Diversity Constraint (Max 2 per agent).');
   top4.forEach((c, i) => log(`  #${i+1}: ${c.agentName} -> ${c.action} (Score: ${c.score.toFixed(3)})`));
 
-  // --- STEP 7: INTENT AGGREGATION ---
-  // finalIntentScore = Σ (candidateScore × directionSign)
-  // Note: 'score' calculated in Step 4 was absolute value. 
-  // We need to re-apply sign from intentScore.
-  
   let finalIntentScore = 0;
   top4.forEach(c => {
       const sign = Math.sign(c.intentScore);
-      // If action is HOLD (score 0), sign is 0, contributes 0.
-      // If action is REALLOCATE (score 0), sign is 0.
-      
-      // The prompt says: candidateScore = ... * actionStrength
-      // finalIntentScore = Σ (candidateScore × directionSign)
-      // So if HOLD has actionStrength 0, candidateScore is 0.
       
       finalIntentScore += (c.score * sign);
   });
 
   log(`Step 7: Aggregated Intent Score: ${finalIntentScore.toFixed(3)}`);
 
-  // Interpretation
-  const T = 0.5; // Configurable threshold
+  const T = 0.5;
   let finalDecision = 'HOLD';
   
   if (finalIntentScore > T) {
       finalDecision = 'BUY_MORE';
   } else if (finalIntentScore < -T) {
-      finalDecision = 'SELL_PATH'; // Temporary placeholder for Step 8
+      finalDecision = 'SELL_PATH';
   } else {
       finalDecision = 'HOLD';
   }
 
   log(`  -> Preliminary Decision based on Threshold T=${T}: ${finalDecision}`);
 
-  // --- STEP 8: EXIT VS REDUCE RESOLUTION ---
   if (finalDecision === 'SELL_PATH') {
       if (exitRiskState === 'HIGH') {
           finalDecision = 'EXIT';
@@ -241,22 +215,12 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
       log(`Step 8: No sell path resolution needed (Decision is ${finalDecision}).`);
   }
 
-  // --- STEP 9: REALLOCATE HANDLING ---
   let reallocate = false;
   if (finalDecision === 'REDUCE' || finalDecision === 'EXIT') {
-      // Check if another symbol has BUY_MORE recommendation (not available in single symbol context)
-      // For this agent scope, we just set the flag if the *intent* was REALLOCATE-like or if we are freeing up capital.
-      // The prompt says: "Emit REALLOCATE flag only if: Final action is REDUCE or EXIT AND Another symbol has BUY_MORE"
-      // Since we don't know about other symbols here, we will always set a "capitalAvailable" flag or similar.
-      // Or we strictly follow "REALLOCATE is NOT decided here."
-      // We will just return the flag as requested.
       reallocate = true; 
       log('Step 9: Capital freed up (REDUCE/EXIT) -> Reallocation candidate.');
   }
-
-  // --- FINAL OUTPUT CONSTRUCTION ---
   
-  // Generate human-readable reasoning
   const reasoningSummary = `Master Agent decided to ${finalDecision} based on a final intent score of ${finalIntentScore.toFixed(2)}. ` +
                            `Top contributors were ${top4.map(c => c.agentName).join(', ')}. ` +
                            (vetoApplied ? 'Liquidity Veto was active. ' : '') +
@@ -264,13 +228,13 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log(`*** FINAL DECISION: ${finalDecision} ***`);
 
-  // Append Master logs to the collection
   allLogs = [...allLogs, ...masterLogs];
 
   return {
       symbol,
       finalAction: finalDecision,
       finalIntentScore,
+      marketPrice,
       top4Candidates: top4,
       vetoApplied,
       reallocate,

@@ -44,14 +44,12 @@ export async function analyze(symbol, portfolio) {
 
     const lookback = 20;
     
-    // Volume Stability
     const vol20 = calculateSMA(volumes.slice(0, 20));
     const vol20Std = calculateStdDev(volumes.slice(0, 20));
-    const volumeStability = vol20 > 0 ? vol20Std / vol20 : 0; // CV of volume
+    const volumeStability = vol20 > 0 ? vol20Std / vol20 : 0;
     
     log(`Volume Stability (CV): ${volumeStability.toFixed(2)}`);
 
-    // Volatility
     const logReturns = [];
     for (let i = 0; i < lookback; i++) {
         if (prices[i+1]) {
@@ -63,7 +61,6 @@ export async function analyze(symbol, portfolio) {
     
     log(`Volatility (20d): ${(volatility20*100).toFixed(2)}%`);
 
-    // Amihud Illiquidity Proxy (simplified)
     const amihudValues = [];
     for (let i = 0; i < lookback; i++) {
         if (prices[i+1]) {
@@ -73,14 +70,14 @@ export async function analyze(symbol, portfolio) {
             amihudValues.push(amihud);
         }
     }
-    const amihudAvg = calculateSMA(amihudValues) * 1000000; // Scale up
+    const amihudAvg = calculateSMA(amihudValues) * 1000000;
     
     log(`Liquidity Proxy (Amihud): ${amihudAvg.toFixed(4)}`);
 
     let riskScore = 0;
     const warnings = [];
 
-    if (volatility20 > 0.03) { // >3% daily volatility
+    if (volatility20 > 0.03) {
         riskScore += 30;
         warnings.push('High volatility detected');
         log('Risk +30: High Volatility');
@@ -98,7 +95,6 @@ export async function analyze(symbol, portfolio) {
         log('Risk +20: Low Liquidity');
     }
 
-    // Portfolio Concentration Risk (if portfolio provided)
     if (portfolio && portfolio.positions) {
         const position = portfolio.positions.find(p => p.symbol === symbol);
         if (position) {
@@ -126,11 +122,9 @@ export async function analyze(symbol, portfolio) {
         decisions = ['HOLD', 'REDUCE'];
         exitRiskState = 'MEDIUM';
     } else {
-        decisions = ['HOLD', 'BUY_MORE']; // Low risk allows buying
+        decisions = ['HOLD', 'BUY_MORE'];
     }
     
-    // Normalize risk score to confidence (0-1)
-    // High risk score = High confidence in SELL/AVOID
     const confidence = Math.min(riskScore / 100, 1.0);
 
     log(`Action: ${action} (Confidence: ${(confidence*100).toFixed(0)}%)`);

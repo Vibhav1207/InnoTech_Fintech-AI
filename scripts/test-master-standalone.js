@@ -1,5 +1,4 @@
 
-// Mock Agent Factories
 const createMockAgent = (name, action, decisions, confidence, data = {}) => ({
     analyze: async () => ({
         agent: name,
@@ -11,7 +10,6 @@ const createMockAgent = (name, action, decisions, confidence, data = {}) => ({
     })
 });
 
-// MASTER AGENT LOGIC (Pasted from agents/master/index.js with minor mods for standalone)
 async function makeDecision(symbol, portfolio, dependencies = {}) {
   const {
       technicalAgent,
@@ -28,7 +26,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log(`--- Master Agent (Judge) Initiated for ${symbol} ---`);
 
-  // Helper to safely run an agent
   const runAgent = async (agent, name, ...args) => {
     try {
       log(`Delegating analysis to ${name} agent...`);
@@ -51,13 +48,11 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
     }
   };
 
-  // 1. Collect inputs from all 4 agents
   const tech = await runAgent(technicalAgent, 'technical', symbol);
   const sent = await runAgent(sentimentAgent, 'sentiment', symbol);
   const quant = await runAgent(quantAgent, 'quant', symbol);
   const risk = await runAgent(riskAgent, 'risk', symbol, portfolio);
 
-  // Collect sub-agent logs
   let allLogs = [...masterLogs];
   [tech, sent, quant, risk].forEach(agentResult => {
       if (agentResult && agentResult.logs) {
@@ -67,7 +62,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log('--- JUDGE LOGIC START ---');
 
-  // --- STEP 0: INPUT NORMALIZATION ---
   let candidates = [];
   
   const processAgent = (agentRes, agentName) => {
@@ -90,7 +84,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
   log(`Step 0: Expanded candidates. Total: ${candidates.length}`);
   candidates.forEach(c => log(`  - ${c.agentName}: ${c.action} (Conf: ${c.agentConfidence.toFixed(2)})`));
 
-  // --- STEP 1: DOMAIN PRIORITY WEIGHTS ---
   const AGENT_WEIGHTS = {
       'Liquidity Agent': 1.00,
       'Technical Agent': 0.85,
@@ -100,7 +93,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
   
   log('Step 1: Applied Domain Priority Weights.');
 
-  // --- STEP 2: ACTION -> INTENT MAPPING ---
   const ACTION_SCORES = {
       'BUY_MORE': 2,
       'HOLD': 0,
@@ -113,7 +105,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log('Step 2: Mapped actions to intent strength.');
 
-  // --- STEP 3: LIQUIDITY VETO (HARD CONSTRAINT) ---
   const exitRiskState = risk.data && risk.data.exitRiskState ? risk.data.exitRiskState : 'LOW';
   const liquidityAction = risk.action;
   
@@ -133,7 +124,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
       log('Step 3: No Liquidity Veto applied.');
   }
 
-  // --- STEP 4: CANDIDATE SCORING ---
   const getQualityMultiplier = (c) => {
       let multiplier = 1.0;
       const m = c.agentMetrics;
@@ -171,11 +161,9 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log('Step 4: Candidates Scored.');
 
-  // --- STEP 5: RANKING ---
   candidates.sort((a, b) => b.score - a.score);
   log('Step 5: Candidates Ranked by Score (Descending).');
 
-  // --- STEP 6: DIVERSITY CONSTRAINT ---
   const top4 = [];
   const agentCounts = {};
   
@@ -192,7 +180,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
   log('Step 6: Selected TOP 4 with Diversity Constraint (Max 2 per agent).');
   top4.forEach((c, i) => log(`  #${i+1}: ${c.agentName} -> ${c.action} (Score: ${c.score.toFixed(3)})`));
 
-  // --- STEP 7: INTENT AGGREGATION ---
   let finalIntentScore = 0;
   top4.forEach(c => {
       const sign = Math.sign(c.intentScore);
@@ -201,7 +188,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log(`Step 7: Aggregated Intent Score: ${finalIntentScore.toFixed(3)}`);
 
-  // Interpretation
   const T = 0.5;
   let finalDecision = 'HOLD';
   
@@ -215,7 +201,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log(`  -> Preliminary Decision based on Threshold T=${T}: ${finalDecision}`);
 
-  // --- STEP 8: EXIT VS REDUCE RESOLUTION ---
   if (finalDecision === 'SELL_PATH') {
       if (exitRiskState === 'HIGH') {
           finalDecision = 'EXIT';
@@ -228,7 +213,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
       log(`Step 8: No sell path resolution needed.`);
   }
 
-  // --- STEP 9: REALLOCATE HANDLING ---
   let reallocate = false;
   if (finalDecision === 'REDUCE' || finalDecision === 'EXIT') {
       reallocate = true; 
@@ -245,7 +229,6 @@ async function makeDecision(symbol, portfolio, dependencies = {}) {
   };
 }
 
-// --- TEST RUNNER ---
 async function runTests() {
     console.log('\n=== SCENARIO 1: BULLISH CONSENSUS ===');
     const s1 = await makeDecision('TEST_BULL', {}, {

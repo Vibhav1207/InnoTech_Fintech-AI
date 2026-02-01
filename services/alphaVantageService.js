@@ -3,10 +3,10 @@ import axios from 'axios';
 const API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
 const BASE_URL = 'https://www.alphavantage.co/query';
 
-// --- Helper: Generate Mock Data ---
 function generateMockDailyData(symbol, days = 100) {
   const data = [];
-  let price = 150.0; // Base price
+  let price = 150.0;
+
   const now = new Date();
   
   for (let i = 0; i < days; i++) {
@@ -14,7 +14,6 @@ function generateMockDailyData(symbol, days = 100) {
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
     
-    // Random walk
     const change = (Math.random() - 0.5) * 5; 
     price += change;
     if (price < 10) price = 10;
@@ -25,7 +24,7 @@ function generateMockDailyData(symbol, days = 100) {
       high: parseFloat((price + Math.random() * 2).toFixed(2)),
       low: parseFloat((price - Math.random() * 2).toFixed(2)),
       close: parseFloat(price.toFixed(2)),
-      adjustedClose: parseFloat(price.toFixed(2)), // For adjusted endpoint
+      adjustedClose: parseFloat(price.toFixed(2)),
       volume: Math.floor(Math.random() * 1000000) + 500000,
       dividendAmount: 0,
       splitCoefficient: 1.0
@@ -127,8 +126,8 @@ export async function getDailyAdjustedData(symbol) {
     });
 
     const timeSeries = response.data['Time Series (Daily)'];
-    // API sometimes returns different keys or limits
     if (!timeSeries && !response.data['Time Series (Daily)']) {
+
        throw new Error('No daily adjusted data found for symbol: ' + symbol);
     }
     
@@ -189,7 +188,7 @@ export async function getRSI(symbol, interval = 'daily', timePeriod = 14, series
     return { 
       symbol, 
       indicator: 'RSI', 
-      value: 30 + Math.random() * 40, // Random RSI between 30 and 70
+      value: 30 + Math.random() * 40,
       lastUpdated: new Date().toISOString().split('T')[0] 
     }; 
   }

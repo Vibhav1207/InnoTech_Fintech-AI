@@ -15,13 +15,10 @@ export default async function handler(req, res) {
     try {
       const decisionResult = await masterAgent.makeDecision(symbol, { _id: portfolioId });
 
-      // Map new Master Agent output to DB Schema
-      let dbAction = 'HOLD';
-      if (decisionResult.finalAction === 'BUY_MORE') dbAction = 'BUY';
-      else if (decisionResult.finalAction === 'REDUCE' || decisionResult.finalAction === 'EXIT') dbAction = 'SELL';
-      
-      // Normalize intent score to 0-1 confidence
       const confidence = Math.min(Math.abs(decisionResult.finalIntentScore) / 3, 0.99);
+
+      // Use the exact action from the decision result instead of mapping to generic BUY/SELL
+      const dbAction = decisionResult.finalAction;
 
       await AgentDecision.create({
           agentName: 'master',

@@ -9,7 +9,7 @@ export default function JudgesMode() {
   const [symbol, setSymbol] = useState('AAPL');
   const logsEndRef = useRef(null);
   const [displayedLogs, setDisplayedLogs] = useState([]);
-  const [currentStep, setCurrentStep] = useState('IDLE'); // IDLE, ANALYZING, DECIDING, EXECUTING, COMPLETED
+  const [currentStep, setCurrentStep] = useState('IDLE');
 
   const scrollToBottom = () => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -19,13 +19,14 @@ export default function JudgesMode() {
     scrollToBottom();
   }, [displayedLogs]);
 
-  // Typewriter effect for logs
   useEffect(() => {
     if (logs.length > displayedLogs.length) {
+
       const timeout = setTimeout(() => {
         setDisplayedLogs(prev => [...prev, logs[prev.length]]);
-      }, 50); // Speed of log typing
+      }, 50);
       return () => clearTimeout(timeout);
+
     } else if (logs.length > 0 && logs.length === displayedLogs.length && isRunning) {
         setIsRunning(false);
         setCurrentStep('COMPLETED');
@@ -43,7 +44,7 @@ export default function JudgesMode() {
       const response = await fetch('/api/run-agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, portfolioId: 'simulation-portfolio' }), // Mock portfolio ID
+        body: JSON.stringify({ symbol, portfolioId: 'simulation-portfolio' }),
       });
 
       const data = await response.json();
@@ -236,12 +237,10 @@ export default function JudgesMode() {
              const price = techData?.price || 0;
              const vol = techData?.volatility || 0.02;
              
-             // Simple simulation logic
-             const slPercent = vol * 0.5; // Tighter stop for high vol? No, wider. Let's say 1x daily vol.
-             // Actually vol is annualized. Daily vol ~ vol / 16.
              const dailyVol = vol / 16;
              
              const slPrice = decision.action === 'BUY' ? price * (1 - dailyVol * 2) : price * (1 + dailyVol * 2);
+
              const tpPrice = decision.action === 'BUY' ? price * (1 + dailyVol * 4) : price * (1 - dailyVol * 4);
              const riskReward = 2.0;
 

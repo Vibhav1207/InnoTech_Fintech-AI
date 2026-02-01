@@ -47,7 +47,6 @@ export async function analyze(symbol) {
     const currentDay = dailyData[0];
     const prices = dailyData.map(d => d.close);
     
-    // Momentum
     const price5dAgo = prices[5];
     const mom5 = calculateMomentum(currentDay.close, price5dAgo);
     
@@ -56,15 +55,15 @@ export async function analyze(symbol) {
 
     log(`Momentum Metrics: 5d=${(mom5*100).toFixed(2)}%, 20d=${(mom20*100).toFixed(2)}%`);
 
-    // Breakout
     const last10DaysPrices = prices.slice(1, 11);
+
     const recentHigh = Math.max(...last10DaysPrices);
     const isBreakout = currentDay.close > recentHigh;
     
     if (isBreakout) log('Breakout Detected: Price > 10d High');
 
-    // Volatility / Z-Score
     const last20Prices = prices.slice(0, 20);
+
     const sma20 = calculateSMA(last20Prices);
     const stdDev20 = calculateStdDev(last20Prices);
     const zScore = stdDev20 !== 0 ? (currentDay.close - sma20) / stdDev20 : 0;
@@ -74,7 +73,6 @@ export async function analyze(symbol) {
     let score = 0;
     const reasons = [];
 
-    // Scoring Logic
     if (mom5 > 0.02) {
         score += 20;
         reasons.push('Strong short-term momentum (>2%)');
@@ -113,7 +111,6 @@ export async function analyze(symbol) {
 
     log(`Final Score: ${score}`);
 
-    // Decision
     let action = 'HOLD';
     let decisions = ['HOLD', 'HOLD'];
 
@@ -129,7 +126,7 @@ export async function analyze(symbol) {
         decisions = ['HOLD', 'REDUCE'];
     }
 
-    const confidence = Math.min(Math.abs(score) / 50, 1.0); // Normalize to 0-1
+    const confidence = Math.min(Math.abs(score) / 50, 1.0);
 
     log(`Action: ${action} (Confidence: ${(confidence*100).toFixed(0)}%)`);
 

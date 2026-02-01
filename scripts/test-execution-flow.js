@@ -2,7 +2,6 @@ require('dotenv').config({ path: '.env.local' });
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-// Define Schemas minimal for creation
 const UserSchema = new Schema({ name: String, email: String });
 const PortfolioSchema = new Schema({ 
     userId: Schema.Types.ObjectId, 
@@ -22,7 +21,6 @@ async function setup() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to DB');
 
-    // Create or Get User
     let user = await User.findOne({ email: 'execution_test@example.com' });
     if (!user) {
         user = await User.create({ name: 'Execution Test User', email: 'execution_test@example.com' });
@@ -31,21 +29,20 @@ async function setup() {
         console.log('Found User:', user._id);
     }
 
-    // Create or Get Portfolio
     let portfolio = await Portfolio.findOne({ userId: user._id });
+
     if (!portfolio) {
         portfolio = await Portfolio.create({ userId: user._id, cashAvailable: 100000 });
         console.log('Created Portfolio:', portfolio._id);
     } else {
-        // Reset cash for test
         portfolio.cashAvailable = 100000;
+
         await portfolio.save();
         console.log('Found Portfolio:', portfolio._id, '(Cash reset to 100k)');
     }
 
     console.log('PORTFOLIO_ID=' + portfolio._id);
     
-    // Trigger API Execution
     const http = require('http');
     const data = JSON.stringify({
         portfolioId: portfolio._id.toString(),

@@ -34,7 +34,7 @@ async function callApi(path, method = 'GET', body = null) {
     return new Promise((resolve, reject) => {
         const options = {
             hostname: 'localhost',
-            port: 3000,
+            port: 3001,
             path: path,
             method: method,
             headers: {
@@ -62,12 +62,10 @@ async function runDemo() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to DB');
 
-    // 1. Reset Portfolio for fresh start
     const portfolio = await Portfolio.findOne();
     if (portfolio) {
         portfolio.cashAvailable = 10000;
         await portfolio.save();
-        // Clear positions and logs
         await Position.deleteMany({ userId: portfolio.userId });
         await TradeLog.deleteMany({ userId: portfolio.userId });
         console.log('Portfolio reset to $10,000. Positions and logs cleared.');
@@ -78,7 +76,6 @@ async function runDemo() {
 
     const portfolioId = portfolio._id.toString();
 
-    // 2. Buy 10 shares of IBM manually
     console.log('\n--- Buying 10 shares of IBM ---');
     const buyRes = await callApi('/api/execute', 'POST', {
         portfolioId,
@@ -88,8 +85,8 @@ async function runDemo() {
     });
     console.log('Buy Result:', buyRes);
 
-    // 3. View Portfolio (PnL)
     console.log('\n--- Viewing Portfolio PnL ---');
+
     const portRes = await callApi('/api/portfolio');
     if (portRes.success) {
         console.log(`Cash: $${portRes.portfolio.cashAvailable}`);
@@ -99,8 +96,8 @@ async function runDemo() {
         ));
     }
 
-    // 4. Sell 5 shares of IBM manually
     console.log('\n--- Selling 5 shares of IBM ---');
+
     const sellRes = await callApi('/api/execute', 'POST', {
         portfolioId,
         symbol: 'IBM',
@@ -109,7 +106,6 @@ async function runDemo() {
     });
     console.log('Sell Result:', sellRes);
 
-    // 5. View History
     console.log('\n--- Viewing Trade History ---');
     const logRes = await callApi('/api/logs');
     if (logRes.success) {

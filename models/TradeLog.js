@@ -15,6 +15,11 @@ const TradeLogSchema = new mongoose.Schema({
     enum: ['BUY', 'SELL'],
     required: true,
   },
+  intent: {
+    type: String,
+    enum: ['BUY_MORE', 'REDUCE', 'EXIT', 'REALLOCATE', 'ENTRY'],
+    default: 'ENTRY'
+  },
   qty: {
     type: Number,
     required: true,
@@ -24,11 +29,11 @@ const TradeLogSchema = new mongoose.Schema({
     required: true,
   },
   pnl: {
-    type: Number, // Profit/Loss for SELL trades, 0 or null for BUY
+    type: Number,
     default: 0,
   },
   agentSource: {
-    type: String, // e.g., 'technical', 'sentiment', or 'master'
+    type: String,
     required: true,
   },
   confidence: {
