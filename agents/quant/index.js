@@ -114,16 +114,16 @@ export async function analyze(symbol) {
     let action = 'HOLD';
     let decisions = ['HOLD', 'HOLD'];
 
-    if (score >= 25) {
-        action = 'BUY';
+    if (score > 20) {
+        action = 'BUY_MORE';
         decisions = ['BUY_MORE', 'HOLD'];
-    } else if (score <= -25) {
+    } else if (score < -20) {
         action = 'SELL';
-        decisions = ['EXIT', 'REDUCE'];
-    } else if (score > 10) {
-        decisions = ['HOLD', 'BUY_MORE'];
+        decisions = ['SELL', 'EXIT'];
+        reasons.push('Quant Score Critical: Strong Negative Momentum/Stats.');
     } else if (score < -10) {
-        decisions = ['HOLD', 'REDUCE'];
+        action = 'REDUCE';
+        decisions = ['REDUCE', 'HOLD'];
     }
 
     const confidence = Math.min(Math.abs(score) / 50, 1.0);

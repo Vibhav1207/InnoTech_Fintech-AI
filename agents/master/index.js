@@ -190,15 +190,63 @@ export async function makeDecision(symbol, portfolio, dependencies = {}) {
 
   log(`Step 7: Aggregated Intent Score: ${finalIntentScore.toFixed(3)}`);
 
-  const T = 0.5;
-  let finalDecision = 'HOLD';
+  // Profit Taking Logic
+  if (portfolio && portfolio.positions) {
+      const position = portfolio.positions.find(p => p.symbol === symbol);
+      if (position) {
+          const currentPrice = marketPrice || position.currentPrice || position.avgPrice;
+          const unrealizedPnL = (currentPrice - position.avgPrice) * position.qty;
+          const returnPct = (unrealizedPnL / (position.avgPrice * position.qty)) * 100;
+
+          log(`Profit Check: Return ${returnPct.toFixed(2)}% ($${unrealizedPnL.toFixed(2)})`);
+
+          if (returnPct > 5) {
+              log('  -> Profit > 5%: Applying Profit Taking Bias (-0.5 to score)');
+              finalIntentScore -= 0.5;
+          }
+          if (returnPct > 10) {
+              log('  -> Profit > 10%: Strong Profit Taking Bias (-1.5 to score)');
+              finalIntentScore -= 1.5;
+          }
+          if (returnPct > 15) {
+              log('  -> Profit > 15%: HUGE WIN -> FORCE TAKE PROFIT');
+              finalIntentScore = -100;
+              finalDecision = 'EXIT';
+          }
+
+          // Stop Loss Logic
+          if (returnPct < -5) {
+               log('  -> Loss < -5%: Applying Stop Loss Bias (-0.5 to score)');
+               finalIntentScore -= 0.5;
+          }
+          if (returnPct < -8) {
+               log('  -> Loss < -8%: CRITICAL STOP LOSS -> FORCE EXIT');
+               finalIntentScore = -100; // Force score to be extremely negative
+               finalDecision = 'EXIT';
+          }
+      }
+  }
+
+  // Force Exit if Risk Agent screams SELL/EXIT with High Confidence
+  if (liquidityAction === 'SELL' || liquidityAction === 'EXIT') {
+      if (risk.confidence > 0.8) {
+          log('  -> Risk Agent CRITICAL signal -> Overriding to EXIT');
+          finalIntentScore = -100;
+          finalDecision = 'EXIT';
+      }
+  }
+
+  const T = 0.3; // Lowered threshold from 0.5 to make it more sensitive
   
-  if (finalIntentScore > T) {
-      finalDecision = 'BUY_MORE';
-  } else if (finalIntentScore < -T) {
-      finalDecision = 'SELL_PATH';
-  } else {
-      finalDecision = 'HOLD';
+  // If we haven't already forced an exit
+  if (finalIntentScore > -50) {
+      if (finalIntentScore > T) {
+          finalDecision = 'BUY_MORE';
+      } else if (finalIntentScore < -0.25) { 
+          finalDecision = 'SELL_PATH';
+      } else {
+          finalDecision = 'HOLD';
+      }
   }
 
   log(`  -> Preliminary Decision based on Threshold T=${T}: ${finalDecision}`);

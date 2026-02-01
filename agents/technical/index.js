@@ -133,10 +133,10 @@ export async function analyze(symbol) {
     }
   } else if (regime === 'DOWNTREND') {
     if (rsiState === 'OVERBOUGHT') {
-      decisions = ['EXIT', 'REDUCE'];
+      decisions = ['SELL', 'EXIT']; 
       primaryAction = 'SELL';
       confidence += 0.2;
-      reasoning.push('Bearish: Downtrend with overbought bounce. Sell signal.');
+      reasoning.push('Bearish Reversal: Downtrend + Overbought. Immediate Sell.');
       log('Signal: Downtrend + Overbought Bounce -> SELL');
     } else if (rsiState === 'OVERSOLD') {
       decisions = ['HOLD', 'REALLOCATE']; 
@@ -144,11 +144,11 @@ export async function analyze(symbol) {
       reasoning.push('Downtrend extended, RSI oversold. Waiting for bounce.');
       log('Signal: Downtrend + Oversold -> HOLD (Wait for bounce)');
     } else {
-      decisions = ['REDUCE', 'EXIT'];
+      decisions = ['SELL', 'REDUCE'];
       primaryAction = 'SELL';
       confidence += 0.1;
-      reasoning.push('Downtrend active, reducing exposure.');
-      log('Signal: Downtrend Active -> SELL/REDUCE');
+      reasoning.push('Downtrend active, selling into weakness.');
+      log('Signal: Downtrend Active -> SELL');
     }
   } else { 
     if (rsiState === 'OVERSOLD') {
@@ -158,9 +158,9 @@ export async function analyze(symbol) {
       reasoning.push('Range bound: Buying at support (Oversold).');
       log('Signal: Range Bound Support -> BUY');
     } else if (rsiState === 'OVERBOUGHT') {
-      decisions = ['REDUCE', 'HOLD']; 
+      decisions = ['SELL', 'REDUCE']; 
       primaryAction = 'SELL';
-      confidence += 0.1;
+      confidence += 0.2;
       reasoning.push('Range bound: Selling at resistance (Overbought).');
       log('Signal: Range Bound Resistance -> SELL');
     } else {
@@ -184,6 +184,8 @@ export async function analyze(symbol) {
 
   if (latestClose < ma20 && regime === 'UPTREND') {
      confidence -= 0.1;
+     // If price breaks below MA20 in uptrend, consider it a warning or weak sell
+     decisions.push('REDUCE');
      reasoning.push('Warning: Price below short-term MA20 despite uptrend.');
      log('Warning: Price below MA20 in Uptrend');
   }

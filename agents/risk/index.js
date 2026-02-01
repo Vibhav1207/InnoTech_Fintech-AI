@@ -116,10 +116,13 @@ export async function analyze(symbol, portfolio) {
 
     if (riskScore > 60) {
         action = 'SELL';
-        decisions = ['EXIT', 'REDUCE'];
+        decisions = ['SELL', 'EXIT'];
+        warnings.push('CRITICAL RISK: High Volatility/Liquidity Risk.');
         exitRiskState = 'HIGH';
     } else if (riskScore > 30) {
-        decisions = ['HOLD', 'REDUCE'];
+        action = 'REDUCE';
+        decisions = ['REDUCE', 'HOLD'];
+        warnings.push('ELEVATED RISK: Monitor closely.');
         exitRiskState = 'MEDIUM';
     } else {
         decisions = ['HOLD', 'BUY_MORE'];

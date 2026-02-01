@@ -139,17 +139,17 @@ export async function analyze(symbol) {
       reasoningLog.push('Solid bullish sentiment supported by data.');
       log('Decision: Bullish Sentiment -> BUY');
   } else if (overallMood === 'BEARISH') {
-      primaryDecision = 'REDUCE';
+      primaryDecision = 'SELL';
       secondaryDecision = 'EXIT';
       baseConfidence += 0.2;
-      reasoningLog.push('Consistent bearish sentiment detected.');
-      log('Decision: Bearish Sentiment -> SELL/REDUCE');
+      reasoningLog.push('Consistent bearish sentiment detected. Selling.');
+      log('Decision: Bearish Sentiment -> SELL');
   } else { 
       primaryDecision = 'HOLD';
-      secondaryDecision = 'REALLOCATE';
+      secondaryDecision = 'REDUCE';
       baseConfidence -= 0.1; 
-      reasoningLog.push('Signals are mixed. Best to hold or reallocate to clearer opportunities.');
-      log('Decision: Mixed Signals -> HOLD');
+      reasoningLog.push('Signals are mixed. Best to hold or reduce exposure.');
+      log('Decision: Mixed Signals -> HOLD/REDUCE');
   }
 
   if (volumeIntensity === 'LOW') baseConfidence -= 0.1;

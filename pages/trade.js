@@ -141,9 +141,19 @@ export default function TradePage() {
                 </span>
               </h2>
               {isLooping && (
-                <p className="text-sm text-slate-300 mt-1">
-                  Cooldown: <span className="font-mono text-blue-300">{cooldown}s</span>
-                </p>
+                <div className="mt-1">
+                  <p className="text-sm text-slate-300">
+                    Cooldown: <span className="font-mono text-blue-300">{cooldown}s</span>
+                  </p>
+                  {session && (
+                     <div className="mt-2 text-xs font-mono bg-slate-900/50 p-2 rounded inline-block">
+                        <span className="text-green-400 mr-3">Consecutive Wins: {session.consecutiveWins || 0}</span>
+                        <span className={`${(session.consecutiveLosses || 0) >= 2 ? 'text-red-500 font-bold animate-pulse' : 'text-red-400'}`}>
+                            Consecutive Losses: {session.consecutiveLosses || 0}/3
+                        </span>
+                     </div>
+                  )}
+                </div>
               )}
             </div>
             <div className="flex gap-4">
