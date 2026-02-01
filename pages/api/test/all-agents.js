@@ -4,8 +4,6 @@ import * as quantAgent from '../../../agents/quant';
 import * as riskAgent from '../../../agents/risk';
 
 export default async function handler(req, res) {
-  // Database connection removed for standalone testing
-  // await dbConnect();
 
   const symbol = req.query.symbol || 'AAPL';
   const mockPortfolio = {
@@ -19,7 +17,6 @@ export default async function handler(req, res) {
   try {
     console.log(`Testing all agents for ${symbol}...`);
 
-    // Run in parallel
     const [tech, sent, quant, risk] = await Promise.all([
       technicalAgent.analyze(symbol),
       sentimentAgent.analyze(symbol),

@@ -37,12 +37,12 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 text-left max-w-4xl mx-auto">
            <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-xl">
               <div className="text-blue-400 mb-3">
                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
               </div>
-              <h3 className="font-bold text-white mb-2">Real-time Analytics</h3>
+              <h3 className="font-bold text-white mb-2">Real-time Analytics (Delay)</h3>
               <p className="text-sm text-slate-400">Live portfolio tracking and performance metrics visualization.</p>
            </div>
            <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-xl">
@@ -51,13 +51,6 @@ export default function Home() {
               </div>
               <h3 className="font-bold text-white mb-2">Multi-Agent System</h3>
               <p className="text-sm text-slate-400">Consensus-based decision making from Sentiment, Technical, and Risk agents.</p>
-           </div>
-           <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-xl">
-              <div className="text-sky-400 mb-3">
-                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-              </div>
-              <h3 className="font-bold text-white mb-2">Enterprise Security</h3>
-              <p className="text-sm text-slate-400">Secure execution environment with strict risk management protocols.</p>
            </div>
         </div>
       </div>
