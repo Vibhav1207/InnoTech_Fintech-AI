@@ -5,7 +5,7 @@ import axios from 'axios';
 import StopModal from '../components/StopModal';
 
 export default function TradePage() {
-  const { session, startAgent, stopAgent, isLooping, cooldown, modalState, closeModal } = useAgent();
+  const { session, startAgent, stopAgent, isLooping, cooldown, modalState, closeModal, portfolio } = useAgent();
   
   const [wishlist, setWishlist] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -14,12 +14,20 @@ export default function TradePage() {
   const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const prevSessionRef = React.useRef(null);
 
   useEffect(() => {
     if (session) {
-      if (session.wishlist && session.wishlist.length > 0) setWishlist(session.wishlist);
-      if (session.maxCapital) setMaxCapital(session.maxCapital);
-      if (session.maxTradesPerDay) setMaxTrades(session.maxTradesPerDay);
+      if (session.wishlist && session.wishlist.length > 0 && JSON.stringify(session.wishlist) !== JSON.stringify(prevSessionRef.current?.wishlist)) {
+          setWishlist(session.wishlist);
+      }
+      if (session.maxCapital && session.maxCapital !== prevSessionRef.current?.maxCapital) {
+          setMaxCapital(session.maxCapital);
+      }
+      if (session.maxTradesPerDay && session.maxTradesPerDay !== prevSessionRef.current?.maxTradesPerDay) {
+          setMaxTrades(session.maxTradesPerDay);
+      }
+      prevSessionRef.current = session;
     }
   }, [session]);
 
@@ -60,6 +68,14 @@ export default function TradePage() {
       setError('Please add at least one stock to the wishlist.');
       return;
     }
+    if (!portfolio) {
+      setError('Loading portfolio data... please wait.');
+      return;
+    }
+    if (Number(maxCapital) > portfolio.cashAvailable) {
+        setError(`Insufficient funds. Available cash: $${portfolio.cashAvailable.toFixed(2)}`);
+        return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -88,6 +104,7 @@ export default function TradePage() {
   };
 
   const isLimitReached = session && session.tradesUsedToday >= session.maxTradesPerDay;
+  const isCapitalInvalid = portfolio && Number(maxCapital) > portfolio.cashAvailable;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-6">
@@ -133,12 +150,12 @@ export default function TradePage() {
               {!isLooping ? (
                 <button 
                   onClick={handleStart}
-                  disabled={loading || isLimitReached}
+                  disabled={loading || isLimitReached || isCapitalInvalid}
                   className={`px-6 py-3 text-white font-bold rounded-lg transition-all shadow-lg shadow-blue-900/20 ${
-                    loading || isLimitReached ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-500'
+                    loading || isLimitReached || isCapitalInvalid ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-500'
                   }`}
                 >
-                  {loading ? 'STARTING...' : isLimitReached ? 'LIMIT REACHED' : '▶ START AGENT'}
+                  {loading ? 'STARTING...' : isLimitReached ? 'LIMIT REACHED' : isCapitalInvalid ? 'INSUFFICIENT FUNDS' : '▶ START AGENT'}
                 </button>
               ) : (
                 <button 
@@ -219,13 +236,24 @@ export default function TradePage() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Max Capital Allocation ($)</label>
-                <input 
-                  type="number" 
-                  value={maxCapital}
-                  onChange={(e) => setMaxCapital(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:border-green-500 font-mono"
-                  disabled={isLooping}
-                />
+                <div className="flex flex-col gap-1">
+                  <input 
+                    type="number" 
+                    value={maxCapital}
+                    onChange={(e) => setMaxCapital(e.target.value)}
+                    className={`w-full bg-slate-900 border rounded-lg px-4 py-2 focus:outline-none font-mono ${
+                      isCapitalInvalid 
+                        ? 'border-red-500 focus:border-red-500 text-red-100' 
+                        : 'border-slate-600 focus:border-green-500'
+                    }`}
+                    disabled={isLooping}
+                  />
+                  {portfolio && (
+                      <span className={`text-xs ${isCapitalInvalid ? 'text-red-400 font-bold' : 'text-green-400'}`}>
+                          Available: ${portfolio.cashAvailable.toFixed(2)}
+                      </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-500 mt-1">Maximum cash the agent can use per loop.</p>
               </div>
 
