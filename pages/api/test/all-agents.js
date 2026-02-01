@@ -1,11 +1,11 @@
-import dbConnect from '../../../lib/db';
 import * as technicalAgent from '../../../agents/technical';
 import * as sentimentAgent from '../../../agents/sentiment';
 import * as quantAgent from '../../../agents/quant';
 import * as riskAgent from '../../../agents/risk';
 
 export default async function handler(req, res) {
-  await dbConnect();
+  // Database connection removed for standalone testing
+  // await dbConnect();
 
   const symbol = req.query.symbol || 'AAPL';
   const mockPortfolio = {
