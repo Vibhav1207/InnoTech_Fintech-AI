@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 export default function Layout({ children }) {
+  // Layout component
   const router = useRouter();
   
   const navItems = [
@@ -75,6 +76,7 @@ export default function Layout({ children }) {
 
       {/* Main Content Area */}
       <main className="flex-grow md:ml-64 p-6 md:p-8 mt-16 md:mt-0 overflow-x-hidden bg-[#0f172a]">
+        
         <div className="max-w-7xl mx-auto animate-fadeIn">
           {children}
         </div>

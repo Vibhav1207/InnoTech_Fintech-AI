@@ -110,7 +110,7 @@ export function AgentProvider({ children }) {
                             isOpen: true,
                             reason: 'Daily Trade Limit Reached',
                             stats: {
-                                lastPnL: session?.lastTradePnL || 0,
+                                lastPnL: session?.sessionPnL || session?.lastTradePnL || 0,
                                 tradesUsedToday: res.data.tradesUsedToday || session.maxTradesPerDay,
                                 maxTradesPerDay: session.maxTradesPerDay,
                                 wins: session.consecutiveWins,
@@ -132,13 +132,13 @@ export function AgentProvider({ children }) {
                             isOpen: true,
                             reason: res.data.message || 'Risk Governor Triggered',
                             stats: res.data.sessionStats ? {
-                                lastPnL: res.data.sessionStats.lastPnL,
+                                lastPnL: res.data.sessionStats.sessionPnL || res.data.sessionStats.lastPnL || 0,
                                 tradesUsedToday: res.data.tradesUsedToday,
                                 maxTradesPerDay: session.maxTradesPerDay,
                                 wins: res.data.sessionStats.wins,
                                 losses: res.data.sessionStats.losses
                             } : {
-                                lastPnL: 0,
+                                lastPnL: session.sessionPnL || 0,
                                 tradesUsedToday: session.tradesUsedToday,
                                 maxTradesPerDay: session.maxTradesPerDay,
                                 wins: 0,
@@ -188,15 +188,35 @@ export function AgentProvider({ children }) {
         }
     }, [isLooping, cooldown]);
 
+    const [isPolling, setIsPolling] = useState(false);
+
     useEffect(() => {
-        const pollInterval = setInterval(() => {
-            fetchPortfolio();
-            fetchSession();
-            fetchLogs(); 
+        fetchSession();
+        fetchPortfolio();
+        fetchLogs();
+    }, []);
+
+    // ... existing fetch functions ...
+
+    useEffect(() => {
+        const pollInterval = setInterval(async () => {
+            if (isPolling) return; // Skip if previous poll is still running
+            setIsPolling(true);
+            try {
+                await Promise.all([
+                    fetchPortfolio(),
+                    fetchSession(),
+                    fetchLogs()
+                ]);
+            } catch (err) {
+                console.error("Polling error", err);
+            } finally {
+                setIsPolling(false);
+            }
         }, 5000);
 
         return () => clearInterval(pollInterval);
-    }, []);
+    }, [isPolling]);
 
     const closeModal = () => setModalState({ ...modalState, isOpen: false });
 

@@ -43,6 +43,9 @@ export default async function handler(req, res) {
                 if (status === 'RUNNING') {
                     updateData.startedAt = new Date();
                     updateData.stoppedAt = null;
+                    updateData.consecutiveWins = 0;
+                    updateData.consecutiveLosses = 0;
+                    updateData.sessionPnL = 0;
                 } else if (status === 'STOPPED' || status === 'PAUSED') {
                     updateData.stoppedAt = new Date();
                 }

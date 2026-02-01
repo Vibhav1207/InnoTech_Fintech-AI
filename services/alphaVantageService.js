@@ -33,6 +33,91 @@ function generateMockDailyData(symbol, days = 100) {
   return data;
 }
 
+export async function searchSymbols(keywords) {
+  try {
+    if (!API_KEY) throw new Error('Alpha Vantage API key is missing');
+
+    const response = await axios.get(BASE_URL, {
+      params: {
+        function: 'SYMBOL_SEARCH',
+        keywords,
+        apikey: API_KEY
+      }
+    });
+
+    // console.log('Alpha Vantage Search Response:', JSON.stringify(response.data, null, 2));
+    console.log('Alpha Vantage Search Response:', JSON.stringify(response.data, null, 2));
+
+    if (response.data['Note']) {
+      throw new Error('Alpha Vantage API limit reached');
+    }
+
+    const matches = response.data['bestMatches'];
+    if (!matches) {
+      return [];
+    }
+
+    return matches.map(match => ({
+      symbol: match['1. symbol'],
+      name: match['2. name'],
+      type: match['3. type'],
+      region: match['4. region'],
+      marketOpen: match['5. marketOpen'],
+      marketClose: match['6. marketClose'],
+      timezone: match['7. timezone'],
+      currency: match['8. currency'],
+      matchScore: match['9. matchScore']
+    }));
+  } catch (error) {
+    console.error(`Error searching symbols for ${keywords}:`, error.message);
+    throw error;
+  }
+}
+
+export async function getIntradayData(symbol, interval = '5min') {
+  try {
+    if (!API_KEY) throw new Error('Alpha Vantage API key is missing');
+
+    const response = await axios.get(BASE_URL, {
+      params: {
+        function: 'TIME_SERIES_INTRADAY',
+        symbol,
+        interval,
+        apikey: API_KEY,
+        // outputsize: 'full' // 'full' might be restricted for demo keys
+      }
+    });
+
+    console.log('Alpha Vantage Intraday Response:', JSON.stringify(response.data, null, 2));
+
+    if (response.data['Note']) {
+      throw new Error('Alpha Vantage API limit reached');
+    }
+
+    const timeSeriesKey = `Time Series (${interval})`;
+    const timeSeries = response.data[timeSeriesKey];
+
+    if (!timeSeries) {
+      throw new Error(`No intraday data (${interval}) found for symbol: ` + symbol);
+    }
+
+    const formattedData = Object.keys(timeSeries).map(time => ({
+      time,
+      open: parseFloat(timeSeries[time]['1. open']),
+      high: parseFloat(timeSeries[time]['2. high']),
+      low: parseFloat(timeSeries[time]['3. low']),
+      close: parseFloat(timeSeries[time]['4. close']),
+      volume: parseInt(timeSeries[time]['5. volume'])
+    }));
+
+    // Sort ascending by time
+    return formattedData.sort((a, b) => new Date(a.time) - new Date(b.time));
+  } catch (error) {
+    console.error(`Error fetching intraday data for ${symbol}:`, error.message);
+    throw error; 
+  }
+}
+
 export async function getQuote(symbol) {
   try {
     if (!API_KEY) throw new Error('Alpha Vantage API key is missing');
@@ -113,7 +198,7 @@ export async function getDailyData(symbol) {
   }
 }
 
-export async function getDailyAdjustedData(symbol) {
+export async function getDailyAdjustedData(symbol, allowMock = true) {
   try {
     if (!API_KEY) throw new Error('Alpha Vantage API key is missing');
 
@@ -125,31 +210,32 @@ export async function getDailyAdjustedData(symbol) {
       }
     });
 
-    const timeSeries = response.data['Time Series (Daily)'];
-    if (!timeSeries && !response.data['Time Series (Daily)']) {
+    if (response.data['Note']) {
+       throw new Error('Alpha Vantage API limit reached');
+    }
 
+    const timeSeries = response.data['Time Series (Daily)'];
+    if (!timeSeries) {
        throw new Error('No daily adjusted data found for symbol: ' + symbol);
     }
     
-    const data = response.data['Time Series (Daily)'];
-    if (!data) throw new Error('Invalid API response structure');
-
-    const formattedData = Object.keys(data).map(date => ({
-      date,
-      open: parseFloat(data[date]['1. open']),
-      high: parseFloat(data[date]['2. high']),
-      low: parseFloat(data[date]['3. low']),
-      close: parseFloat(data[date]['4. close']),
-      adjustedClose: parseFloat(data[date]['5. adjusted close']),
-      volume: parseInt(data[date]['6. volume']),
-      dividendAmount: parseFloat(data[date]['7. dividend amount']),
-      splitCoefficient: parseFloat(data[date]['8. split coefficient'])
+    const formattedData = Object.keys(timeSeries).map(date => ({
+      time: date, // Normalized to 'time' for consistency with intraday
+      open: parseFloat(timeSeries[date]['1. open']),
+      high: parseFloat(timeSeries[date]['2. high']),
+      low: parseFloat(timeSeries[date]['3. low']),
+      close: parseFloat(timeSeries[date]['4. close']),
+      adjustedClose: parseFloat(timeSeries[date]['5. adjusted close']),
+      volume: parseInt(timeSeries[date]['6. volume']),
+      dividendAmount: parseFloat(timeSeries[date]['7. dividend amount']),
+      splitCoefficient: parseFloat(timeSeries[date]['8. split coefficient'])
     }));
 
-    return formattedData.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return formattedData.sort((a, b) => new Date(a.time) - new Date(b.time));
   } catch (error) {
+    if (!allowMock) throw error;
     console.warn(`[Mock] Generating daily adjusted data for ${symbol} due to error: ${error.message}`);
-    return generateMockDailyData(symbol);
+    return generateMockDailyData(symbol).map(d => ({ ...d, time: d.date }));
   }
 }
 

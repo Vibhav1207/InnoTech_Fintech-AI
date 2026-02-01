@@ -31,6 +31,10 @@ const AgentSessionSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  sessionPnL: {
+    type: Number,
+    default: 0,
+  },
   startedAt: {
     type: Date,
   },

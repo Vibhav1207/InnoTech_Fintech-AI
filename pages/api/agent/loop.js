@@ -28,6 +28,9 @@ export default async function handler(req, res) {
 
         if (now.getDate() !== lastLoop.getDate() || now.getMonth() !== lastLoop.getMonth()) {
             session.tradesUsedToday = 0;
+            session.consecutiveWins = 0;
+            session.consecutiveLosses = 0;
+            session.sessionPnL = 0;
             await PortfolioManager.snapshotDailyPnL(userId);
         }
 
@@ -103,6 +106,8 @@ export default async function handler(req, res) {
         executionResult.results.forEach(r => {
             if (r.status === 'EXECUTED' && r.action === 'SELL' && r.realizedPnL !== undefined) {
                 session.lastTradePnL = r.realizedPnL;
+                session.sessionPnL = (session.sessionPnL || 0) + r.realizedPnL;
+                
                 if (r.realizedPnL > 0) {
                     session.consecutiveWins += 1;
                     session.consecutiveLosses = 0;
@@ -138,7 +143,8 @@ export default async function handler(req, res) {
                 sessionStats: {
                     wins: session.consecutiveWins,
                     losses: session.consecutiveLosses,
-                    lastPnL: session.lastTradePnL
+                    lastPnL: session.lastTradePnL,
+                    sessionPnL: session.sessionPnL
                 },
                 results: executionResult.results,
                 decisions: decisions.map(d => ({
@@ -165,7 +171,8 @@ export default async function handler(req, res) {
             sessionStats: {
                 wins: session.consecutiveWins,
                 losses: session.consecutiveLosses,
-                lastPnL: session.lastTradePnL
+                lastPnL: session.lastTradePnL,
+                sessionPnL: session.sessionPnL
             },
             results: executionResult.results,
             decisions: decisions.map(d => ({

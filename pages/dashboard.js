@@ -2,41 +2,13 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useAgent } from '../context/AgentContext';
 import axios from 'axios';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
+
 
 export default function Dashboard() {
   const { portfolio, positions, logs, session, isLooping, cooldown } = useAgent();
-  const [chartData, setChartData] = useState([]);
-
-  useEffect(() => {
-    async function fetchHistory() {
-      try {
-        const res = await axios.get('/api/portfolio/history');
-        if (res.data.history) {
-            setChartData(res.data.history.map(h => ({
-                time: h.date,
-                value: h.value
-            })));
-        }
-      } catch (e) {
-        console.error("Failed to load history", e);
-      }
-    }
-    fetchHistory();
-  }, []);
 
   const fmtMoney = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
   const fmtPct = (n) => `${(n || 0).toFixed(2)}%`;
-
-  const displayData = chartData;
 
   if (!portfolio && !session) {
       return <div className="p-10 text-center text-slate-500">Loading Agent Data...</div>;
@@ -97,28 +69,7 @@ export default function Dashboard() {
         {/* Main Content Area (2/3) */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Chart */}
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 h-[300px]">
-            <h3 className="text-lg font-semibold mb-4">Portfolio Performance</h3>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={displayData}>
-                <defs>
-                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="time" stroke="#64748b" />
-                <YAxis stroke="#64748b" domain={['auto', 'auto']} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155' }}
-                  itemStyle={{ color: '#e2e8f0' }}
-                />
-                <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorVal)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {/* Chart removed */}
 
           {/* Open Positions */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
